@@ -1,5 +1,6 @@
-package com.ll.entity
+package com.ll.domain.comment.entity
 
+import com.ll.domain.post.entity.Post
 import jakarta.persistence.*
 
 @Entity

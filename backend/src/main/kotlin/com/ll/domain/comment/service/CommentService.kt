@@ -1,7 +1,7 @@
-package com.ll.service
+package com.ll.domain.comment.service
 
-import com.ll.entity.Comment
-import com.ll.repository.CommentRepository
+import com.ll.domain.comment.entity.Comment
+import com.ll.domain.comment.repository.CommentRepository
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 

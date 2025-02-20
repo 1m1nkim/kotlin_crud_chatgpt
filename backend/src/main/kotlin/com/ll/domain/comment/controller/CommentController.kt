@@ -1,7 +1,7 @@
-package com.ll.controller
+package com.ll.domain.comment.controller
 
-import com.ll.entity.Comment
-import com.ll.service.CommentService
+import com.ll.domain.comment.entity.Comment
+import com.ll.domain.comment.service.CommentService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus

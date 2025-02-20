@@ -1,0 +1,423 @@
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\Application.kt ---- 
+package com.ll
+
+import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.runApplication
+
+@SpringBootApplication
+class Application
+
+fun main(args: Array<String>) {
+    runApplication<Application>(*args)
+}
+ 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\Main.kt ---- 
+package com.ll
+
+//TIP 코드를 <b>실행</b>하려면 <shortcut actionId="Run"/>을(를) 누르거나
+// 에디터 여백에 있는 <icon src="AllIcons.Actions.Execute"/> 아이콘을 클릭하세요.
+fun main() {
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\config\SwaggerConfig.kt ---- 
+package com.ll.config
+
+import io.swagger.v3.oas.models.OpenAPI
+import io.swagger.v3.oas.models.info.Info
+import org.springdoc.core.models.GroupedOpenApi
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+
+@Configuration
+class SwaggerConfig {
+    @Bean
+    fun customOpenAPI(): OpenAPI {
+        return OpenAPI()
+            .info(
+                Info()
+                    .title("Posts")
+                    .description("PostApi")
+            )
+    }
+
+    @Bean
+    fun postGroupedOpenApi(): GroupedOpenApi {
+        return GroupedOpenApi.builder()
+            .group("Post")
+            .pathsToMatch("/api/posts/**")
+            .build()
+    }
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\controller\CommentController.kt ---- 
+package com.ll.controller
+
+import com.ll.entity.Comment
+import com.ll.service.CommentService
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.*
+
+@RestController
+@RequestMapping("/api/comments/")
+@Tag(name = "Comment", description = "댓글 관련 Api")
+class CommentController (
+    private val commentService: CommentService
+){
+    @GetMapping("/post/{postId}")
+    @Operation(summary = "게시글 댓글 조회", description = "특정 게시글에 달린 모든 댓글 조회")
+    fun getCommentsByPost(@PathVariable postId: Long): ResponseEntity<List<Comment>> =
+        ResponseEntity.ok(commentService.getCommentsByPostId(postId))
+
+    @PostMapping
+    @Operation(summary = "댓글 등록", description = "댓글 등록")
+    fun addComment(@RequestBody comment: Comment):ResponseEntity<Comment> =
+        ResponseEntity.status(HttpStatus.CREATED).body(commentService.addComment(comment))
+
+    @DeleteMapping("/{postId}")
+    @Operation(summary = "댓글 삭제", description = "댓글 삭제")
+    fun deleteComment(@PathVariable postId: Long): ResponseEntity<Void> {
+        commentService.deleteComment(postId)
+        return ResponseEntity.noContent().build()
+    }
+
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\controller\PostController.kt ---- 
+package com.ll.controller
+
+import com.ll.entity.Post
+import com.ll.service.PostService
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.*
+
+@RestController
+@RequestMapping("/api/posts")
+@Tag(name = "Post", description = "게시글 API")
+class PostController (
+    val postService: PostService
+){
+    @GetMapping
+    @Operation(summary = "모든 게시글 조회", description = "모든 게시글을 조회합니다.")
+    fun getAllPosts(): ResponseEntity<List<Post>> =
+        ResponseEntity.ok(postService.getAllPosts())
+
+    @GetMapping("/{id}")
+    @Operation(summary = "게시글 조회", description = "게시글 ID로 특정 게시글을 조회합니다.")
+    fun getPost(@PathVariable id: Long): ResponseEntity<Post> =
+        postService.getPost(id)?.let{ResponseEntity.ok(it)}
+            ?: ResponseEntity.notFound().build()
+
+
+    @PostMapping
+    @Operation(summary = "게시글 등록", description = "게시글 등록합니다.")
+    fun createPost(@RequestBody post: Post): ResponseEntity<Post> {
+        val savePost = postService.createPost(post)
+        return ResponseEntity.status(HttpStatus.CREATED).body(savePost)
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "게시글 수정", description = "게시글 ID로 특정 게시글을 수정합니다.")
+    fun updatePost(@PathVariable id: Long, @RequestBody updatedPost: Post): ResponseEntity<Post> =
+        postService.updatePost(id, updatedPost)?.let{ ResponseEntity.ok(it)}
+            ?: ResponseEntity.notFound().build()
+
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "게시글 삭제", description = "게시글 ID로 특정 게시글을 삭제합니다.")
+    fun deletePost(@PathVariable id: Long): ResponseEntity<Void> =
+        postService.deletePost(id)?.let{ResponseEntity.noContent().build()}
+            ?: ResponseEntity.notFound().build()
+
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\entity\Comment.kt ---- 
+package com.ll.entity
+
+import jakarta.persistence.*
+
+@Entity
+@Table(name = "comments")
+class Comment (
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long = 0L,
+
+    @Column(nullable = false, length = 500)
+    var content: String,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_id", nullable = false)
+    var post: Post
+){
+
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\entity\Post.kt ---- 
+package com.ll.entity
+
+import jakarta.persistence.*
+
+@Entity
+@Table(name = "posts")
+open class Post(        //open을 해야 Jpa를 원활하게 사용할 수 있음
+                        //기본적으로 코틀린은 class 생성 시 private final로 생성하기 때문에
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long = 0L,
+
+    @Column(nullable = false, length = 200)
+    var title: String,
+
+    @Lob
+    @Column(nullable = false)
+    var content: String,
+
+    @OneToMany(mappedBy = "post", cascade = [CascadeType.ALL], orphanRemoval = true)
+    var comments: MutableList<Comment> = mutableListOf()
+) 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\repository\CommentRepository.kt ---- 
+package com.ll.repository
+
+import com.ll.entity.Comment
+import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.stereotype.Repository
+
+@Repository
+interface CommentRepository: JpaRepository<Comment, Long> {
+    fun findByPostId(postId: Long): List<Comment>
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\repository\PostRepository.kt ---- 
+package com.ll.repository
+
+import com.ll.entity.Post
+import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.stereotype.Repository
+
+@Repository
+interface PostRepository : JpaRepository<Post, Long>{
+    fun findByTitleContaining(keyword: String): List<Post>
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\service\CommentService.kt ---- 
+package com.ll.service
+
+import com.ll.entity.Comment
+import com.ll.repository.CommentRepository
+import jakarta.transaction.Transactional
+import org.springframework.stereotype.Service
+
+@Service
+@Transactional
+class CommentService (
+    private val commentRepository: CommentRepository
+){
+    fun getCommentsByPostId(postId: Long): List<Comment> =
+        commentRepository.findByPostId(postId)
+
+    fun addComment(comment: Comment): Comment =
+        commentRepository.save(comment)
+
+    fun deleteComment(commentId: Long) =
+        commentRepository.deleteById(commentId)
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\service\PostService.kt ---- 
+package com.ll.service
+
+import com.ll.entity.Post
+import com.ll.repository.PostRepository
+import jakarta.transaction.Transactional
+import org.springframework.stereotype.Service
+
+@Service
+@Transactional
+class PostService (
+    private val postRepository: PostRepository
+){
+    fun getAllPosts(): List<Post> =
+        postRepository.findAll()
+
+    fun getPost(id: Long): Post? =
+        postRepository.findById(id).orElse(null)
+
+    fun createPost(post: Post): Post =
+        postRepository.save(post)
+
+    fun updatePost(id: Long, updatedPost: Post): Post? {
+        val existingPost = postRepository.findById(id).orElse(null) ?: return null
+        existingPost.title = updatedPost.title
+        existingPost.content = updatedPost.content
+        return postRepository.save(existingPost)
+    }
+
+    fun deletePost(id: Long): Boolean {
+        if(postRepository.existsById(id)){
+            postRepository.deleteById(id)
+            return true
+        }
+        return false
+    }
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\test\kotlin\com\ll\controller\PostControllerMockTest.kt ---- 
+package com.ll.controller
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.ll.entity.Post
+import com.ll.service.PostService
+import org.junit.jupiter.api.Test
+import org.mockito.Mockito.`when`
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.http.MediaType
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
+
+@WebMvcTest(PostController::class)
+class PostControllerMockTest (
+    @Autowired val mockMvc: MockMvc,
+    @Autowired val objectMapper: ObjectMapper
+){
+    @MockBean
+    lateinit  var postService: PostService
+
+    @Test
+    fun `모든 게시글 조회 성공`(){
+        val posts = listOf(Post(id = 1L, title="Title 1", content = "Content 1"))
+        `when`(postService.getAllPosts()).thenReturn(posts)
+
+        mockMvc.perform(get("/api/posts"))
+            .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$[0].id").value(1))
+            .andExpect(jsonPath("$[0].title").value("Title 1"))
+            .andExpect(jsonPath("$[0].content").value("Content 1"))
+    }
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\test\kotlin\com\ll\controller\PostControllerUnitTest.kt ---- 
+package com.ll.controller
+
+import com.ll.entity.Post
+import com.ll.service.PostService
+import org.junit.jupiter.api.Test
+import org.mockito.Mockito
+import org.springframework.http.HttpStatus
+import kotlin.test.assertEquals
+
+class PostControllerUnitTest {
+    private val postService: PostService = Mockito.mock(PostService::class.java)
+    private val postController =  PostController(postService)
+
+    @Test
+    fun `모든 게시글 조회 성공`(){
+        //given 임의의 데이터 생성
+        val posts = listOf(Post(id = 1L, title = "Title 1", content = "Content 1"))
+        Mockito.`when`(postService.getAllPosts()).thenReturn(posts)
+
+        // when 컨트롤러의 getAllPosts 메소드 호출
+        val response = postController.getAllPosts()
+
+        //then 반환된 응답의 상태 코드와 바디가 예상과 일치하는지 검증
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(posts, response.body)
+    }
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\test\kotlin\com\ll\service\CustomOAuth2UserServiceTest.kt ---- 
+package com.ll.service
+
+import com.ll.repository.UserRepository
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+import org.mockito.Mockito.mock
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest
+import org.springframework.security.oauth2.core.OAuth2AccessToken
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User
+import org.springframework.security.oauth2.core.user.OAuth2User
+import java.time.Instant
+
+class CustomOAuth2UserServiceTest {
+
+    private val userRepository: UserRepository = mock()
+    private val customOAuth2UserService = CustomOAuth2UserService(userRepository)
+
+    @Test
+    fun `신규 사용자 정보가 주어지면 회원가입 처리되어야 한다`() {
+        // 미리 정의한 테스트용 속성
+        val attributes = mapOf(
+            "id" to 123456789L,
+            "kakao_account" to mapOf(
+                "email" to "kakaouser@example.com",
+                "profile" to mapOf("nickname" to "카카오유저")
+            )
+        )
+
+        // OAuth2User 객체 모의 생성
+        val oAuth2User: OAuth2User = DefaultOAuth2User(
+            emptyList(),
+            attributes,
+            "id"
+        )
+
+        // 가짜 AccessToken
+        val accessToken = OAuth2AccessToken(
+            OAuth2AccessToken.TokenType.BEARER,
+            "dummy",
+            Instant.now(),
+            Instant.now().plusSeconds(3600)
+        )
+
+        // OAuth2UserRequest 생성
+        val oAuth2UserRequest = OAuth2UserRequest(
+            customOAuth2UserService.clientRegistration,
+            accessToken
+        )
+
+        // 실제 테스트 대상 메서드 호출
+        val result = customOAuth2UserService.loadUser(oAuth2UserRequest)
+
+        // "email" 필드가 "kakaouser@example.com"인지 검증
+        assertThat(result.attributes["email"]).isEqualTo("kakaouser@example.com")
+    }
+}
+ 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\resources\application.yml ---- 
+spring:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_ON_EXIT=FALSE;MODE=MYSQL
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            authorization-grant-type: authorization_code
+            redirect-uri: "http://localhost:8080/login/oauth2/code/kakao"
+            client-name: Kakao
+            client-authentication-method: client_secret_post
+
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+ 

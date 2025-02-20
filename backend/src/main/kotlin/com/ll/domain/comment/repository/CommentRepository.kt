@@ -1,6 +1,6 @@
-package com.ll.repository
+package com.ll.domain.comment.repository
 
-import com.ll.entity.Comment
+import com.ll.domain.comment.entity.Comment
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
