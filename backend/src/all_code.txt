@@ -18,40 +18,11 @@ package com.ll
 // 에디터 여백에 있는 <icon src="AllIcons.Actions.Execute"/> 아이콘을 클릭하세요.
 fun main() {
 } 
----- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\config\SwaggerConfig.kt ---- 
-package com.ll.config
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\domain\comment\controller\CommentController.kt ---- 
+package com.ll.domain.comment.controller
 
-import io.swagger.v3.oas.models.OpenAPI
-import io.swagger.v3.oas.models.info.Info
-import org.springdoc.core.models.GroupedOpenApi
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
-
-@Configuration
-class SwaggerConfig {
-    @Bean
-    fun customOpenAPI(): OpenAPI {
-        return OpenAPI()
-            .info(
-                Info()
-                    .title("Posts")
-                    .description("PostApi")
-            )
-    }
-
-    @Bean
-    fun postGroupedOpenApi(): GroupedOpenApi {
-        return GroupedOpenApi.builder()
-            .group("Post")
-            .pathsToMatch("/api/posts/**")
-            .build()
-    }
-} 
----- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\controller\CommentController.kt ---- 
-package com.ll.controller
-
-import com.ll.entity.Comment
-import com.ll.service.CommentService
+import com.ll.domain.comment.entity.Comment
+import com.ll.domain.comment.service.CommentService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
@@ -82,16 +53,167 @@ class CommentController (
     }
 
 } 
----- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\controller\PostController.kt ---- 
-package com.ll.controller
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\domain\comment\entity\Comment.kt ---- 
+package com.ll.domain.comment.entity
 
-import com.ll.entity.Post
-import com.ll.service.PostService
+import com.ll.domain.post.entity.Post
+import jakarta.persistence.*
+
+@Entity
+@Table(name = "comments")
+class Comment (
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long = 0L,
+
+    @Column(nullable = false, length = 500)
+    var content: String,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_id", nullable = false)
+    var post: Post
+){
+
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\domain\comment\repository\CommentRepository.kt ---- 
+package com.ll.domain.comment.repository
+
+import com.ll.domain.comment.entity.Comment
+import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.stereotype.Repository
+
+@Repository
+interface CommentRepository: JpaRepository<Comment, Long> {
+    fun findByPostId(postId: Long): List<Comment>
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\domain\comment\service\CommentService.kt ---- 
+package com.ll.domain.comment.service
+
+import com.ll.domain.comment.entity.Comment
+import com.ll.domain.comment.repository.CommentRepository
+import jakarta.transaction.Transactional
+import org.springframework.stereotype.Service
+
+@Service
+@Transactional
+class CommentService (
+    private val commentRepository: CommentRepository
+){
+    fun getCommentsByPostId(postId: Long): List<Comment> =
+        commentRepository.findByPostId(postId)
+
+    fun addComment(comment: Comment): Comment =
+        commentRepository.save(comment)
+
+    fun deleteComment(commentId: Long) =
+        commentRepository.deleteById(commentId)
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\domain\member\entity\Member.kt ---- 
+package com.ll.domain.member.entity
+
+import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
+import jakarta.persistence.Id
+import jakarta.persistence.Table
+import org.springframework.security.core.GrantedAuthority
+import org.springframework.security.core.authority.SimpleGrantedAuthority
+
+@Entity
+@Table(name = "members")
+data class Member (
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long = 0L,
+
+    var name: String,
+    var phoneNumber: String = "",
+    var oAuthId: String,
+    var email: String,
+    var profileImageUrl: String,
+    @Enumerated(EnumType.STRING)
+    var memberType: MemberType = MemberType.USER
+){
+    enum class MemberType {USER, ADMIN}
+
+    fun getAuthorities(): List<GrantedAuthority>{
+        return if(memberType == MemberType.ADMIN){
+            listOf(SimpleGrantedAuthority("ADMIN"))
+        }else{
+            listOf(SimpleGrantedAuthority("ROLE_ADMIN"))
+        }
+    }
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\domain\member\repository\MemberRepository.kt ---- 
+package com.ll.domain.member.repository
+
+import com.ll.domain.member.entity.Member
+import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.stereotype.Repository
+import java.util.Optional
+
+@Repository
+interface MemberRepository: JpaRepository<Member, Long> {
+    fun findByoAuthId(oauthId: String): Optional<Member>
+    fun findByEmail(email: String): Optional<Member>
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\domain\member\service\MemberService.kt ---- 
+package com.ll.domain.member.service
+
+import com.ll.domain.member.entity.Member
+import com.ll.domain.member.repository.MemberRepository
+import org.springframework.stereotype.Service
+import java.util.Optional
+
+@Service
+class MemberService(private val memberRepository: MemberRepository) {
+    fun findByoAuthId(oAuthId: String): Optional<Member>{
+        return memberRepository.findByoAuthId(oAuthId)
+    }
+
+    fun findByEmail(email: String): Optional<Member>{
+        return memberRepository.findByEmail(email)
+    }
+
+    //가입 또는 회원정보 수정
+    fun modifyOrJoin(oAuthId: String, name: String, email: String, profileImageUrl: String): Member {
+        val existingMember = memberRepository.findByoAuthId(oAuthId)
+        return if(existingMember.isPresent) {
+            val member = existingMember.get()
+            member.name = name
+            member.profileImageUrl = profileImageUrl
+            memberRepository.save(member)
+        }else{
+            val newMember = Member(
+                name = name,
+                oAuthId = oAuthId,
+                email = email,
+                profileImageUrl = profileImageUrl,
+                memberType = Member.MemberType.USER
+            )
+            memberRepository.save(newMember)
+        }
+    }
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\domain\post\controller\PostController.kt ---- 
+package com.ll.domain.post.controller
+
+import com.ll.domain.post.entity.Post
+import com.ll.domain.post.service.PostService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/posts")
@@ -107,7 +229,7 @@ class PostController (
     @GetMapping("/{id}")
     @Operation(summary = "게시글 조회", description = "게시글 ID로 특정 게시글을 조회합니다.")
     fun getPost(@PathVariable id: Long): ResponseEntity<Post> =
-        postService.getPost(id)?.let{ResponseEntity.ok(it)}
+        postService.getPost(id)?.let{ ResponseEntity.ok(it)}
             ?: ResponseEntity.notFound().build()
 
 
@@ -128,35 +250,23 @@ class PostController (
     @DeleteMapping("/{id}")
     @Operation(summary = "게시글 삭제", description = "게시글 ID로 특정 게시글을 삭제합니다.")
     fun deletePost(@PathVariable id: Long): ResponseEntity<Void> =
-        postService.deletePost(id)?.let{ResponseEntity.noContent().build()}
+        postService.deletePost(id)?.let{ ResponseEntity.noContent().build()}
             ?: ResponseEntity.notFound().build()
 
 } 
----- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\entity\Comment.kt ---- 
-package com.ll.entity
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\domain\post\entity\Post.kt ---- 
+package com.ll.domain.post.entity
 
-import jakarta.persistence.*
-
-@Entity
-@Table(name = "comments")
-class Comment (
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0L,
-
-    @Column(nullable = false, length = 500)
-    var content: String,
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id", nullable = false)
-    var post: Post
-){
-
-} 
----- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\entity\Post.kt ---- 
-package com.ll.entity
-
-import jakarta.persistence.*
+import com.ll.domain.comment.entity.Comment
+import jakarta.persistence.CascadeType
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
+import jakarta.persistence.Id
+import jakarta.persistence.Lob
+import jakarta.persistence.OneToMany
+import jakarta.persistence.Table
 
 @Entity
 @Table(name = "posts")
@@ -176,55 +286,22 @@ open class Post(        //open을 해야 Jpa를 원활하게 사용할 수 있�
     @OneToMany(mappedBy = "post", cascade = [CascadeType.ALL], orphanRemoval = true)
     var comments: MutableList<Comment> = mutableListOf()
 ) 
----- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\repository\CommentRepository.kt ---- 
-package com.ll.repository
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\domain\post\repository\PostRepository.kt ---- 
+package com.ll.domain.post.repository
 
-import com.ll.entity.Comment
+import com.ll.domain.post.entity.Post
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-interface CommentRepository: JpaRepository<Comment, Long> {
-    fun findByPostId(postId: Long): List<Comment>
-} 
----- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\repository\PostRepository.kt ---- 
-package com.ll.repository
-
-import com.ll.entity.Post
-import org.springframework.data.jpa.repository.JpaRepository
-import org.springframework.stereotype.Repository
-
-@Repository
-interface PostRepository : JpaRepository<Post, Long>{
+interface PostRepository : JpaRepository<Post, Long> {
     fun findByTitleContaining(keyword: String): List<Post>
 } 
----- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\service\CommentService.kt ---- 
-package com.ll.service
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\domain\post\service\PostService.kt ---- 
+package com.ll.domain.post.service
 
-import com.ll.entity.Comment
-import com.ll.repository.CommentRepository
-import jakarta.transaction.Transactional
-import org.springframework.stereotype.Service
-
-@Service
-@Transactional
-class CommentService (
-    private val commentRepository: CommentRepository
-){
-    fun getCommentsByPostId(postId: Long): List<Comment> =
-        commentRepository.findByPostId(postId)
-
-    fun addComment(comment: Comment): Comment =
-        commentRepository.save(comment)
-
-    fun deleteComment(commentId: Long) =
-        commentRepository.deleteById(commentId)
-} 
----- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\service\PostService.kt ---- 
-package com.ll.service
-
-import com.ll.entity.Post
-import com.ll.repository.PostRepository
+import com.ll.domain.post.entity.Post
+import com.ll.domain.post.repository.PostRepository
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 
@@ -257,12 +334,362 @@ class PostService (
         return false
     }
 } 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\global\jwt\JwtAuthenticationFilter.kt ---- 
+package com.ll.global.jwt
+
+
+import com.ll.domain.member.service.MemberService
+import com.ll.global.security.SecurityUser
+import jakarta.servlet.FilterChain
+import jakarta.servlet.http.Cookie
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.web.filter.OncePerRequestFilter
+
+class JwtAuthenticationFilter(
+    private val jwtService: JwtService,
+    private val memberService: MemberService
+) : OncePerRequestFilter() {
+    override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
+        val token = extractTokenFromCookies(request)
+        if (token != null && jwtService.validateToken(token)) {
+            val kakaoId = jwtService.getKakaoIdFromToken(token)
+            val member = memberService.findByoAuthId(kakaoId).orElse(null)
+            if (member != null) {
+                val securityUser = SecurityUser(member)
+                val auth = UsernamePasswordAuthenticationToken(securityUser, null, securityUser.authorities)
+                SecurityContextHolder.getContext().authentication = auth
+            }
+        }
+        chain.doFilter(request, response)
+    }
+
+    private fun extractTokenFromCookies(request: HttpServletRequest): String? {
+        return request.cookies?.firstOrNull { it.name == "accessToken" }?.value
+    }
+
+    override fun shouldNotFilter(request: HttpServletRequest): Boolean {
+        val path = request.requestURI
+        // 예외 경로 설정 (예: /login, /books 등)
+        return path.startsWith("/login")
+    }
+}
+ 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\global\jwt\JwtService.kt ---- 
+package com.ll.global.jwt
+
+import com.ll.domain.member.entity.Member
+import com.nimbusds.jose.util.StandardCharset
+import io.jsonwebtoken.Jwts
+import io.jsonwebtoken.security.Keys
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Service
+import java.net.URLDecoder
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+import java.security.Key
+import java.util.Date
+
+@Service
+class JwtService(
+    @Value("\${custom.jwt.secretKey}") secretKey: String
+) {
+    private val key: Key = Keys.hmacShaKeyFor(secretKey.toByteArray(StandardCharsets.UTF_8))
+    private val TOKEN_VALIDITY = 60 * 60 * 1000L  // 1시간
+    private val REFRESH_TOKEN_VALIDITY = 7 * 24 * 60 * 60 * 1000L // 7일
+
+    fun generateToken(member: Member): String{
+        val now = Date()
+        val validity = Date(now.time + TOKEN_VALIDITY)
+        val token = Jwts.builder()
+            .setSubject(member.oAuthId)
+            .claim("id", member.id)
+            .claim("email", member.email)
+            .claim("name", member.name)
+            .setIssuedAt(now)
+            .setExpiration(validity)
+            .signWith(key)
+            .compact()
+        return URLEncoder.encode(token, StandardCharsets.UTF_8)
+    }
+
+    fun generateRefreshToken(member: Member): String{
+        val token = Jwts.builder()
+            .setSubject(member.oAuthId)
+            .setIssuedAt(Date())
+            .setExpiration(Date(System.currentTimeMillis() + REFRESH_TOKEN_VALIDITY))
+            .signWith(key)
+            .compact()
+        return URLEncoder.encode(token, StandardCharsets.UTF_8)
+    }
+
+    fun validateToken(token: String): Boolean{
+        return try{
+            val decode = URLDecoder.decode(token, StandardCharsets.UTF_8)
+            Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(decode)
+            true
+        }catch(e: Exception){
+            false
+        }
+    }
+
+    fun getKakaoIdFromToken(token: String): String{
+        val decoded = URLDecoder.decode(token, StandardCharsets.UTF_8)
+        return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(decoded).body.subject
+    }
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\global\oauth\CustomOAuth2UserService.kt ---- 
+package com.ll.global.oauth
+
+import com.ll.domain.member.service.MemberService
+import com.ll.global.jwt.JwtService
+import com.ll.global.security.SecurityUser
+import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest
+import org.springframework.security.oauth2.core.user.OAuth2User
+import org.springframework.stereotype.Service
+
+@Service
+class CustomOAuth2UserService (
+    private val memberService: MemberService,
+    private val jwtService: JwtService
+): DefaultOAuth2UserService() {
+    override fun loadUser(request: OAuth2UserRequest): OAuth2User {
+        val oAuth2User = super.loadUser(request)
+        val attributes = oAuth2User.attributes
+
+        val kakaoAccount = attributes["kakao_account"] as? Map<*, *>
+        val profile = kakaoAccount?.get("profile") as? Map<*, *>
+        val oAuthId = oAuth2User.name
+        val email = kakaoAccount?.get("eamil") as? String?: ""
+        val name = profile?.get("nickname") as? String?: ""
+        val profileImageUrl = profile?.get("profile_image_url") as? String ?: ""
+
+        val member = memberService.modifyOrJoin(oAuthId, name, email, profileImageUrl)
+        return SecurityUser(member)
+    }
+
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\global\oauth\OAuth2SuccessHandler.kt ---- 
+package com.ll.global.oauth
+
+import com.ll.global.jwt.JwtService
+import com.ll.global.security.SecurityUser
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
+import org.springframework.http.ResponseCookie
+import org.springframework.security.core.Authentication
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler
+import org.springframework.stereotype.Component
+
+@Component
+class OAuth2SuccessHandler(
+    private val jwtService: JwtService
+): SimpleUrlAuthenticationSuccessHandler(){
+    override fun onAuthenticationSuccess(request: HttpServletRequest, response: HttpServletResponse, authentication: Authentication) {
+        val securityUser = authentication.principal as SecurityUser
+
+        val accessToken = jwtService.generateToken(securityUser.member)
+        val refreshToken = jwtService.generateRefreshToken(securityUser.member)
+
+        val accessTokenCookie = ResponseCookie.from("accessToken", accessToken)
+            .path("/")
+            .httpOnly(true)
+            .secure(true)
+            .sameSite("None")
+            .maxAge(60 * 60L)
+            .build()
+
+        val refreshTokenCookie = ResponseCookie.from("refreshToken", refreshToken)
+            .path("/")
+            .httpOnly(true)
+            .secure(true)
+            .sameSite("None")
+            .maxAge(7 * 24 * 60 * 60L)
+            .build()
+
+        response.addHeader("Set-Cookie", accessTokenCookie.toString())
+        response.addHeader("Set-Cookie", refreshTokenCookie.toString())
+
+        redirectStrategy.sendRedirect(request, response, "http://localhost:3000/")
+    }
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\global\security\SecurityConfig.kt ---- 
+package com.ll.global.security
+
+import com.ll.domain.member.service.MemberService
+import com.ll.global.jwt.JwtAuthenticationFilter
+import com.ll.global.jwt.JwtService
+import com.ll.global.oauth.CustomOAuth2UserService
+import com.ll.global.oauth.OAuth2SuccessHandler
+import jakarta.servlet.http.HttpServletResponse
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
+import org.springframework.security.authentication.AuthenticationManager
+import org.springframework.security.authentication.ProviderManager
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
+import org.springframework.security.config.annotation.web.builders.HttpSecurity
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.core.userdetails.UsernameNotFoundException
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
+import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService
+import org.springframework.security.oauth2.client.web.HttpSessionOAuth2AuthorizationRequestRepository
+import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
+class SecurityConfig(
+    private val jwtService: JwtService,
+    private val memberService: MemberService,
+    private val customOAuth2UserService: CustomOAuth2UserService,
+    private val oAuth2SuccessHandler: OAuth2SuccessHandler
+) {
+    @Bean
+    fun filterChain(http: HttpSecurity): SecurityFilterChain {
+        http
+            .cors { cors -> cors.configurationSource(corsConfigurationSource()) }
+            .csrf { csrf -> csrf.disable() }
+            .sessionManagement { session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+            .authorizeHttpRequests { auth ->
+                auth
+                    .requestMatchers("/admin/login").permitAll()
+                    .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
+                    .requestMatchers(
+                        "/api/public/**", "/oauth2/**", "/api/auth/**",
+                        "/refresh", "/api/auth/refresh", "/swagger-ui/**", "/v3/api-docs/**",
+                        "/api/auth/me", "/api/auth/me/**"
+                    ).permitAll()
+                    .requestMatchers("/my/orders").permitAll()
+                    .requestMatchers("/books/**", "/event/**", "/images/**", "/cart/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/reviews/**", "/cart").permitAll()
+                    .anyRequest().authenticated()
+            }
+            .addFilterBefore(JwtAuthenticationFilter(jwtService, memberService), UsernamePasswordAuthenticationFilter::class.java)
+            .oauth2Login{ oauth2 -> oauth2
+                .authorizationEndpoint{authorization  -> authorization
+                    .baseUri("/oauth2/authorization")
+                    .authorizationRequestRepository(HttpSessionOAuth2AuthorizationRequestRepository())}
+                .redirectionEndpoint{ redirection -> redirection
+                    .baseUri("/login/oauth2/code/*")}
+                .successHandler(oAuth2SuccessHandler)
+                .userInfoEndpoint{ userInfo -> userInfo
+                    .userService(customOAuth2UserService)}
+            }
+            .exceptionHandling { exception ->
+                exception.authenticationEntryPoint { request, response, authException ->
+                    response.status = HttpServletResponse.SC_UNAUTHORIZED
+                    response.contentType = "application/json;charset=UTF-8"
+                    response.writer.write("인증이 필요합니다.")
+                }
+            }
+        return http.build()
+    }
+
+    @Bean
+    fun corsConfigurationSource(): CorsConfigurationSource {
+        val config = CorsConfiguration().apply {
+            allowCredentials = true
+            allowedOrigins = listOf("http://localhost:3000")
+            allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+            allowedHeaders = listOf("*")
+            exposedHeaders = listOf("Authorization", "RefreshToken")
+        }
+        val source = UrlBasedCorsConfigurationSource()
+        source.registerCorsConfiguration("/**", config)
+        return source
+    }
+
+    @Bean
+    fun authenticationManager(http: HttpSecurity, memberService: MemberService): AuthenticationManager {
+        val provider = DaoAuthenticationProvider().apply {
+            setUserDetailsService { identifier ->
+                val member = if (identifier.contains("@")) {
+                    memberService.findByEmail(identifier)
+                } else {
+                    memberService.findByoAuthId(identifier)
+                }.orElseThrow { UsernameNotFoundException("사용자를 찾을 수 없습니다.") }
+                SecurityUser(member)
+            }
+            setPasswordEncoder(passwordEncoder())
+        }
+        return ProviderManager(provider)
+    }
+
+    @Bean
+    fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
+}
+ 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\global\security\SecurityUser.kt ---- 
+package com.ll.global.security
+
+import com.ll.domain.member.entity.Member
+import org.springframework.security.core.userdetails.User
+import org.springframework.security.oauth2.core.user.OAuth2User
+
+class SecurityUser(val member: Member): User (member.oAuthId, "", member.getAuthorities()), OAuth2User{
+    override fun getAttributes(): Map<String?, Any?>? {
+        return mapOf(
+            "id" to member.id,
+            "name" to member.name,
+            "email" to member.email,
+            "memberType" to member.memberType.name
+        )
+    }
+
+    override fun getName(): String {
+        return member.oAuthId
+    }
+} 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\main\kotlin\com\ll\global\swagger\SwaggerConfig.kt ---- 
+package com.ll.global.swagger
+
+import io.swagger.v3.oas.models.OpenAPI
+import io.swagger.v3.oas.models.info.Info
+import org.springdoc.core.models.GroupedOpenApi
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+
+@Configuration
+class SwaggerConfig {
+    @Bean
+    fun customOpenAPI(): OpenAPI {
+        return OpenAPI()
+            .info(
+                Info()
+                    .title("Posts")
+                    .description("PostApi")
+            )
+    }
+
+    @Bean
+    fun postGroupedOpenApi(): GroupedOpenApi {
+        return GroupedOpenApi.builder()
+            .group("Post")
+            .pathsToMatch("/api/posts/**")
+            .build()
+    }
+} 
 ---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\test\kotlin\com\ll\controller\PostControllerMockTest.kt ---- 
 package com.ll.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.ll.entity.Post
-import com.ll.service.PostService
+import com.ll.domain.post.entity.Post
+import com.ll.domain.post.controller.PostController
+import com.ll.domain.post.service.PostService
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
@@ -297,8 +724,9 @@ class PostControllerMockTest (
 ---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\backend\src\test\kotlin\com\ll\controller\PostControllerUnitTest.kt ---- 
 package com.ll.controller
 
-import com.ll.entity.Post
-import com.ll.service.PostService
+import com.ll.domain.post.entity.Post
+import com.ll.domain.post.controller.PostController
+import com.ll.domain.post.service.PostService
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
 import org.springframework.http.HttpStatus
@@ -306,7 +734,7 @@ import kotlin.test.assertEquals
 
 class PostControllerUnitTest {
     private val postService: PostService = Mockito.mock(PostService::class.java)
-    private val postController =  PostController(postService)
+    private val postController = PostController(postService)
 
     @Test
     fun `모든 게시글 조회 성공`(){
@@ -420,4 +848,8 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+custom:
+  jwt:
+    secretKey: abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789
  

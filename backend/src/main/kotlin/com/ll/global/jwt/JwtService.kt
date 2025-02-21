@@ -2,6 +2,8 @@ package com.ll.global.jwt
 
 import com.ll.domain.member.entity.Member
 import com.nimbusds.jose.util.StandardCharset
+import io.jsonwebtoken.Jwts
+import io.jsonwebtoken.security.Keys
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.net.URLDecoder
@@ -46,7 +48,7 @@ class JwtService(
     fun validateToken(token: String): Boolean{
         return try{
             val decode = URLDecoder.decode(token, StandardCharsets.UTF_8)
-            Jwts.parserBilder()
+            Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()
                 .parseClaimsJws(decode)

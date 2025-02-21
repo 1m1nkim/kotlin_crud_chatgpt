@@ -1,0 +1,107 @@
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\frontend\src\app\layout.tsx ---- 
+// frontend/src/app/layout.tsx
+import './globals.css'
+import type { Metadata } from 'next'
+import { ReactNode } from 'react'
+
+export const metadata: Metadata = {
+    title: 'My Next.js 13 App',
+    description: 'An example using the app router',
+}
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+    return (
+        <html lang="ko">
+        <body>
+        {/* 모든 페이지에 공통 적용될 레이아웃 */}
+        {children}
+        </body>
+        </html>
+    )
+}
+ 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\frontend\src\app\page.tsx ---- 
+// frontend/src/app/page.tsx
+import Link from 'next/link'
+
+export default function HomePage() {
+    return (
+        <main style={{ padding: '20px' }}>
+            <h1>홈페이지</h1>
+            <p>여기는 루트(/) 페이지입니다.</p>
+            <Link href="/login" style={{ marginTop: '10px', display: 'inline-block' }}>
+                로그인 페이지로 이동
+            </Link>
+        </main>
+    )
+}
+ 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\frontend\src\app\login\page.tsx ---- 
+// frontend/src/app/login/page.tsx
+
+export default function LoginPage() {
+    // 백엔드 도메인 설정
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080'
+
+    // 카카오 OAuth2 엔드포인트
+    const kakaoLoginUrl = `${backendUrl}/oauth2/authorization/kakao`
+
+    return (
+        <main style={{ padding: '20px' }}>
+            <h1>로그인 페이지</h1>
+            <p>카카오 로그인 테스트</p>
+            <a
+                href={kakaoLoginUrl}
+                style={{
+                    display: 'inline-block',
+                    marginTop: '10px',
+                    padding: '10px 20px',
+                    backgroundColor: '#FEE500',
+                    color: '#000',
+                    borderRadius: '4px',
+                    fontWeight: 'bold',
+                }}
+            >
+                카카오로 로그인
+            </a>
+        </main>
+    )
+}
+ 
+---- ?�일: C:\intelij_workspace\crud_chatgpt_solve_kotlin\frontend\src\app\logout\page.tsx ---- 
+// frontend/src/app/logout/page.tsx
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+export default function LogoutPage() {
+    const router = useRouter();
+
+    useEffect(() => {
+        async function logout() {
+            try {
+                const res = await fetch("http://localhost:8080/api/auth/logout", {
+                    method: "POST",
+                    credentials: "include", // 쿠키 포함해서 전송
+                });
+                if (res.ok) {
+                    // 로그아웃 성공 시 로그인 페이지로 리다이렉트
+                    router.push("/login");
+                } else {
+                    console.error("로그아웃 실패");
+                }
+            } catch (error) {
+                console.error("로그아웃 중 에러 발생", error);
+            }
+        }
+        logout();
+    }, [router]);
+
+    return (
+        <main style={{ padding: "20px" }}>
+            <h1>로그아웃 중입니다...</h1>
+        </main>
+    );
+}
+ 
